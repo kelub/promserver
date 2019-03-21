@@ -47,6 +47,7 @@ func NewGrpcCollector() *GrpcCollector {
 			Name:      "grpc_handled_histogram",
 			Help:      "grpc_handled_histogram handled time",
 			//Buckets:   prom.DefBuckets,
+			//TODO Buckets 优化
 			Buckets: []float64{.005, .01, .025, .05, .1, .25, .5, 1, 2.5, 5, 10},
 			//Buckets: prom.LinearBuckets(0.1, .1, 20),
 		}, []string{"service", "service_id", "func_name"}),
@@ -174,6 +175,7 @@ func NewNsqCollector() *NsqCollector {
 			Name:      "nsq_handledSub_histogram",
 			Help:      "nsq_handledSub_histogram handled time",
 			//Buckets:   prom.DefBuckets,
+			//TODO Buckets 优化
 			Buckets: []float64{.005, .01, .025, .05, .1, .25, .5, 1, 2.5, 5, 10},
 			//Buckets: prom.LinearBuckets(0.1, .1, 20),
 		}, []string{"service", "topic", "channel"}),
@@ -185,9 +187,26 @@ func NewNsqCollector() *NsqCollector {
 }
 
 func (n *NsqCollector) Describe(ch chan<- *prom.Desc) {
-
+	n.errorPingCounter.Describe(ch)
+	n.waitPubGauge.Describe(ch)
+	n.waitSubGauge.Describe(ch)
+	n.startSubCounter.Describe(ch)
+	n.endSubCounter.Describe(ch)
+	n.errorSubCounter.Describe(ch)
+	n.handledSubHistogram.Describe(ch)
 }
 
 func (n *NsqCollector) Collect(ch chan<- prom.Metric) {
+	n.errorPingCounter.Collect(ch)
+	n.waitPubGauge.Collect(ch)
+	n.waitSubGauge.Collect(ch)
+	n.startSubCounter.Collect(ch)
+	n.endSubCounter.Collect(ch)
+	n.errorSubCounter.Collect(ch)
+	n.handledSubHistogram.Collect(ch)
+}
 
+//Observe time set Seconds
+func (n *NsqCollector) handledTime(service string, topic string, status string, start time.Time) {
+	n.handledSubHistogram.WithLabelValues(service, topic, status).Observe(time.Since(start).Seconds())
 }

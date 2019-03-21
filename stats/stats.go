@@ -73,6 +73,32 @@ func UnaryServerInterceptor(ctx context.Context, req interface{}, info *grpc.Una
 	return resp, err
 }
 
+type nsqMonitor struct {
+	service   string
+	topic     string
+	channel   string
+	collector *NsqCollector
+	startTime time.Time
+	nsqType   string
+}
+
+func NewNsqMonitor(service string, topic string, channel string, nsqType string) *nsqMonitor {
+	logrus.Infof("NewNsqMonitor %s", topic)
+	m := &nsqMonitor{
+		service: service,
+		topic:   topic,
+		channel: channel,
+		nsqType: nsqType,
+	}
+	m.startTime = time.Now()
+	return m
+}
+
+// TODO 具体错误标示
+func (n *nsqMonitor) HandledEnd(status string) {
+	n.collector.handledTime(n.service, n.topic, status, n.startTime)
+}
+
 // 运行
 func StartPromServer() {
 	ListenAddr := ":9102"
