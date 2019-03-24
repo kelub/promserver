@@ -1,10 +1,8 @@
 package stats
 
 import (
-	"context"
 	"github.com/Sirupsen/logrus"
 	"github.com/prometheus/client_golang/prometheus"
-	"google.golang.org/grpc"
 	"net/http"
 	"time"
 )
@@ -17,12 +15,13 @@ type rpcMonitor struct {
 	startTime  time.Time
 }
 
-func NewRpcMonitor(service string, name string, service_id string) *rpcMonitor {
+func NewRpcMonitor(collector *GrpcCollector, service string, name string, service_id string) *rpcMonitor {
 	logrus.Infof("NewRpcMonitor %s", name)
 	m := &rpcMonitor{
 		service:    service,
 		name:       name,
 		service_id: service_id,
+		collector:  collector,
 	}
 	m.startTime = time.Now()
 	return m
@@ -57,21 +56,21 @@ func (m *rpcMonitor) HandledEnd(status string) {
 	m.collector.handledTime(m.service, m.service_id, m.name, status, m.startTime)
 }
 
-// gRPC 拦截器
-func UnaryServerInterceptor(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp interface{}, err error) {
-	monitor := NewRpcMonitor("service_test", "77", info.FullMethod)
-	monitor.WaitGaugeInc()
-	monitor.StartCounterInc()
-	resp, err = handler(ctx, req)
-	monitor.EndCounterInc()
-	monitor.WaitGaugeDec()
-	if err != nil {
-		monitor.ErrorCounterInc()
-		monitor.HandledEnd("failed")
-	}
-	monitor.HandledEnd("succeed")
-	return resp, err
-}
+//// gRPC 拦截器
+//func UnaryServerInterceptor(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp interface{}, err error) {
+//	monitor := NewRpcMonitor("service_test", "77", info.FullMethod)
+//	monitor.WaitGaugeInc()
+//	monitor.StartCounterInc()
+//	resp, err = handler(ctx, req)
+//	monitor.EndCounterInc()
+//	monitor.WaitGaugeDec()
+//	if err != nil {
+//		monitor.ErrorCounterInc()
+//		monitor.HandledEnd("failed")
+//	}
+//	monitor.HandledEnd("succeed")
+//	return resp, err
+//}
 
 type nsqMonitor struct {
 	service   string
@@ -82,13 +81,14 @@ type nsqMonitor struct {
 	nsqType   string
 }
 
-func NewNsqMonitor(service string, topic string, channel string, nsqType string) *nsqMonitor {
+func NewNsqMonitor(collector *NsqCollector, service string, topic string, channel string, nsqType string) *nsqMonitor {
 	logrus.Infof("NewNsqMonitor %s", topic)
 	m := &nsqMonitor{
-		service: service,
-		topic:   topic,
-		channel: channel,
-		nsqType: nsqType,
+		service:   service,
+		topic:     topic,
+		channel:   channel,
+		nsqType:   nsqType,
+		collector: collector,
 	}
 	m.startTime = time.Now()
 	return m
@@ -99,11 +99,26 @@ func (n *nsqMonitor) HandledEnd(status string) {
 	n.collector.handledTime(n.service, n.topic, status, n.startTime)
 }
 
+// 收集器
+var DefaultGrpcCollector = NewGrpcCollector()
+var DefaultNsqCollector = NewNsqCollector()
+
+func init() {
+	//prometheus.Unregister(prometheus.NewProcessCollector(prometheus.ProcessCollectorOpts{}))
+	//prometheus.Unregister(prometheus.NewGoCollector())
+	//prometheus.MustRegister(DefaultGrpcCollector.waitGauge)
+	//prometheus.MustRegister(DefaultGrpcCollector.startCounter)
+	//prometheus.MustRegister(DefaultGrpcCollector.endCounter)
+	//prometheus.MustRegister(DefaultGrpcCollector.errorCounter)
+	//prometheus.Register(DefaultGrpcCollector.handledHistogram)
+	//prometheus.Register(DefaultNsqCollector.handledSubHistogram)
+	prometheus.MustRegister(DefaultGrpcCollector)
+	prometheus.MustRegister(DefaultNsqCollector)
+}
+
 // 运行
 func StartPromServer() {
 	ListenAddr := ":9102"
-	prometheus.MustRegister(NewGrpcCollector())
-	prometheus.MustRegister(NewNsqCollector())
 	http.Handle("/metrics", prometheus.Handler())
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(`<html>

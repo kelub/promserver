@@ -7,10 +7,6 @@ import (
 
 type GrpcCollector struct {
 	namespace string
-	*grpcVec
-}
-
-type grpcVec struct {
 	//callingGauge	*prom.GaugeVec	//调用中的数量
 	waitGauge    *prom.GaugeVec   //等待中的数量 rpc
 	startCounter *prom.CounterVec //开始rpc计数
@@ -22,7 +18,8 @@ type grpcVec struct {
 
 func NewGrpcCollector() *GrpcCollector {
 	namespace := "grpc"
-	grpcVec := &grpcVec{
+	return &GrpcCollector{
+		namespace: namespace,
 		waitGauge: prom.NewGaugeVec(prom.GaugeOpts{
 			Namespace: namespace,
 			Subsystem: "",
@@ -41,6 +38,12 @@ func NewGrpcCollector() *GrpcCollector {
 			Name:      "grpc_end_counter",
 			Help:      "grpc_end_counter",
 		}, []string{"service", "service_id", "func_name"}),
+		errorCounter: prom.NewCounterVec(prom.CounterOpts{
+			Namespace: namespace,
+			Subsystem: "",
+			Name:      "grpc_error_counter",
+			Help:      "grpc_error_counter",
+		}, []string{"service", "service_id", "func_name"}),
 		handledHistogram: prom.NewHistogramVec(prom.HistogramOpts{
 			Namespace: namespace,
 			Subsystem: "",
@@ -50,11 +53,7 @@ func NewGrpcCollector() *GrpcCollector {
 			//TODO Buckets 优化
 			Buckets: []float64{.005, .01, .025, .05, .1, .25, .5, 1, 2.5, 5, 10},
 			//Buckets: prom.LinearBuckets(0.1, .1, 20),
-		}, []string{"service", "service_id", "func_name"}),
-	}
-	return &GrpcCollector{
-		namespace: namespace,
-		grpcVec:   grpcVec,
+		}, []string{"service", "service_id", "func_name", "status"}),
 	}
 }
 
@@ -120,9 +119,9 @@ type NsqCollector struct {
 }
 
 type nsqVec struct {
-	errorPingCounter *prom.CounterVec //Ping失败计数
-	waitPubGauge     *prom.GaugeVec   //等待中的发布数量
-	waitSubGauge     *prom.GaugeVec   //等待中的订阅数量
+	errorPiDefaultGrpcCollectorounter *prom.CounterVec //Ping失败计数
+	waitPubGauge                      *prom.GaugeVec   //等待中的发布数量
+	waitSubGauge                      *prom.GaugeVec   //等待中的订阅数量
 
 	startSubCounter     *prom.CounterVec
 	endSubCounter       *prom.CounterVec
@@ -133,7 +132,7 @@ type nsqVec struct {
 func NewNsqCollector() *NsqCollector {
 	namespace := "nsq"
 	nsqVec := &nsqVec{
-		errorPingCounter: prom.NewCounterVec(prom.CounterOpts{
+		errorPiDefaultGrpcCollectorounter: prom.NewCounterVec(prom.CounterOpts{
 			Namespace: namespace,
 			Subsystem: "",
 			Name:      "nsq_ping_error_counter",
@@ -178,7 +177,7 @@ func NewNsqCollector() *NsqCollector {
 			//TODO Buckets 优化
 			Buckets: []float64{.005, .01, .025, .05, .1, .25, .5, 1, 2.5, 5, 10},
 			//Buckets: prom.LinearBuckets(0.1, .1, 20),
-		}, []string{"service", "topic", "channel"}),
+		}, []string{"service", "topic", "channel", "status"}),
 	}
 	return &NsqCollector{
 		namespace: namespace,
@@ -187,7 +186,7 @@ func NewNsqCollector() *NsqCollector {
 }
 
 func (n *NsqCollector) Describe(ch chan<- *prom.Desc) {
-	n.errorPingCounter.Describe(ch)
+	n.errorPiDefaultGrpcCollectorounter.Describe(ch)
 	n.waitPubGauge.Describe(ch)
 	n.waitSubGauge.Describe(ch)
 	n.startSubCounter.Describe(ch)
@@ -197,7 +196,7 @@ func (n *NsqCollector) Describe(ch chan<- *prom.Desc) {
 }
 
 func (n *NsqCollector) Collect(ch chan<- prom.Metric) {
-	n.errorPingCounter.Collect(ch)
+	n.errorPiDefaultGrpcCollectorounter.Collect(ch)
 	n.waitPubGauge.Collect(ch)
 	n.waitSubGauge.Collect(ch)
 	n.startSubCounter.Collect(ch)
