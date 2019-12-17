@@ -68,13 +68,34 @@ func (p *PromVec) Histogram(name string, labels []string, buckets []float64) *Pr
 	return p
 }
 
-// TODO add all
-func (p *PromVec) GaugeAdd(labels []string, counter float64) {
-	p.gauge.WithLabelValues(labels...).Add(counter)
+func (p *PromVec) Inc(labels []string) {
+	if p.counter != nil {
+		p.counter.WithLabelValues(labels...).Inc()
+	}
+	if p.gauge != nil {
+		p.gauge.WithLabelValues(labels...).Inc()
+	}
 }
 
-func (p *PromVec) CounterAdd(labels []string, counter float64) {
-	p.counter.WithLabelValues(labels...).Add(counter)
+func (p *PromVec) Dec(labels []string) {
+	if p.gauge != nil {
+		p.gauge.WithLabelValues(labels...).Dec()
+	}
+}
+
+func (p *PromVec) Add(labels []string, value float64) {
+	if p.counter != nil {
+		p.counter.WithLabelValues(labels...).Add(value)
+	}
+	if p.gauge != nil {
+		p.gauge.WithLabelValues(labels...).Add(value)
+	}
+}
+
+func (p *PromVec) Set(labels []string, value float64) {
+	if p.gauge != nil {
+		p.gauge.WithLabelValues(labels...).Set(value)
+	}
 }
 
 func (p *PromVec) HandleTime(labels []string, start time.Time) {
