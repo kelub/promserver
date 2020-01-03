@@ -1,7 +1,7 @@
 package stats
 
 import (
-	//"github.com/Sirupsen/logrus"
+	//"github.com/sirupsen/logrus"
 	prom "github.com/prometheus/client_golang/prometheus"
 	"time"
 )
